@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+   <title>8 Queens</title>
+   <style>
+   		body {height: 100%; width:100%;}
+		ul { height:40px; display:block; clear:left; padding:0px; margin:0px; vertical-align: middle; }
+		li { float:left; list-style: none; height: 40px; width: 40px; padding:0px; margin:0px; background-color:#000; vertical-align: middle; text-align: center; color: #aaa;}
+		ul.oddRow > li:nth-child(odd) { background-color:#ddd; }
+		ul.evenRow > li:nth-child(even) { background-color:#ddd; }
+		li:first-child { background-color: transparent !important;  height:20px; width:20px; padding:10px;}
+    	ul:first-child > li { background-color: transparent; height:20px; vertical-align: middle; width:20px; padding:10px;}
+    	#board { margin: 50px auto; border:1px solid#aaa; padding:30px 50px 50px 30px;}
+    	#newBoard { position: relative; height:30px; width:120px;  float:left; margin-right:20px; }
+    	#random { position: relative; height:30px; width:100px; float:left; }
+    	p {text-align: center; padding: 10px 30px 10px 30px;}
+    </style>
+</head>
+
+<body>
+   <p>Solves the <a href="http://en.wikipedia.org/wiki/Eight_queens_puzzle">n-queens puzzle</a> using recursion. Pick from a 4 to 15 square board, then click to get a random solution.<br />(Ranges of 16-19 will occasionally overflow the stack. More than 20 always will).</p>
+    <div id="board" style="display:none;"></div>
+    <div style="position:absolute; width:240px; left:50%; margin-left:-120px; margin-top:30px;">
+	   <button id="newBoard">Make a new board</button>
+	   <button id="random" style="display:none;">New attempt</button>
+	</div>
+
+    <script>
+
+    document.addEventListener('DOMContentLoaded', function(){ });
+
+	var newButton = document.getElementById('newBoard');
+	var randomButton = document.getElementById('random');
+	
+	var currentBoardSize = 3;
+
+	newButton.addEventListener('click', function() {
+    	do {
+	    	var boardSize = prompt("What size board? (4 - 15)");
+    	} while (isNaN(boardSize) || boardSize < 4 || boardSize > 15 )
+    	currentBoardSize = boardSize - 1;
+    	makeBoard();
+
+	});
+
+	function makeBoard() {
+
+		var boardWidth = (currentBoardSize + 2) * 40;
+		var mainBoardDiv = document.getElementById("board");
+		mainBoardDiv.innerHTML = '';
+		
+		mainBoardDiv.style.width = boardWidth + "px";
+		mainBoardDiv.style.height = boardWidth + "px";
+		var letters = ['a','b','c','d','e','f','g','h','i','j','k','l', 'm', 'n', 'o'];
+		var numbers = ['1','2','3','4','5','6','7','8','9','10','11','12', '13', '14', '15'];
+		for (var i=0; i <= currentBoardSize + 1; i++) {
+			var newRow = document.createElement("ul");
+			if (i > 0) { newRow.className = (i%2 === 0) ? "oddRow" : "evenRow"; }
+			  if (i === 0) {
+				for (var j = 0; j <= currentBoardSize + 1; j++) {
+					var newItem = document.createElement("li");
+				 	if (j === 0) { var blank = document.createTextNode(' '); newItem.appendChild(blank); }
+				 	else { var letter = document.createTextNode(letters[j-1]); newItem.appendChild(letter); }
+					newRow.appendChild(newItem);
+				}
+			  } else {
+				for (var j=0; j <= currentBoardSize + 1; j++) {
+					var newItem = document.createElement("li");
+					if (j === 0) { var num = document.createTextNode(numbers[currentBoardSize-i + 1]); newItem.appendChild(num); }
+					newRow.appendChild(newItem);
+				}
+			  }
+			mainBoardDiv.appendChild(newRow);
+		}
+		mainBoardDiv.style.display = "block";
+		randomButton.style.display = 'block';
+	}; // end makeBoard
+
+	randomButton.addEventListener('click', function() {
+		var finalBoard = solve(null);
+		drawBoard(finalBoard);
+	});
+
+	function solve(chessBoard) {
+	   if (chessBoard === null) {
+			chessBoard = resetBoard(chessBoard);
+		}
+		while (!isLegal(chessBoard) && indexOfQueen(chessBoard.board[chessBoard.lastRow]) !== chessBoard.rowLength ) {
+		// while board is illegal and the queen is not at the end of a row, shift queen along last row
+			chessBoard.board[chessBoard.lastRow] = shiftRow(chessBoard.board[chessBoard.lastRow]);
+		}
+		if (isLegal(chessBoard)) {
+		// if the current board is legal
+			if (chessBoard.lastRow === chessBoard.rowLength) {
+			// if every row is legal
+				chessBoard.solved = true;
+				return chessBoard;
+			} else {
+				chessBoard.board.push(makeArray(chessBoard.rowLength, true));
+				chessBoard.lastRow += 1;
+			}
+		} else if (indexOfQueen(chessBoard.board[chessBoard.lastRow]) === chessBoard.rowLength) {	
+		// if the queen is at the end of the last row
+			if (chessBoard.lastRow === 0) {
+			// if there is only one row left, reset queen to left
+				chessBoard.board[0] = makeArray(chessBoard.rowLength, true);
+			} else {
+				chessBoard.board.pop();
+				chessBoard.lastRow -= 1;
+				if (indexOfQueen(chessBoard.board[chessBoard.lastRow]) === chessBoard.rowLength && chessBoard.lastRow !== 0) {
+					chessBoard.board.pop();
+					chessBoard.lastRow -= 1;
+					chessBoard.board[chessBoard.lastRow] = shiftRow(chessBoard.board[chessBoard.lastRow]);
+				} else if (chessBoard.lastRow === 0){
+					chessBoard.board[0] = makeArray(chessBoard.rowLength, true);
+				} else {
+					chessBoard.board[chessBoard.lastRow] = shiftRow(chessBoard.board[chessBoard.lastRow])
+				}
+			}
+			return chessBoard;
+		}
+		while (chessBoard.solved === false) {
+			chessBoard = solve(chessBoard);
+		};
+		return chessBoard;
+	}; // end solve
+
+	function makeArray(length) {
+		var newArray = [];
+		for (var i = 0; i <= length; i++) {
+			newArray.push(false);
+		}
+		if (arguments[1]) {
+			newArray[0] = true;
+		}
+		return newArray;
+	}
+
+	function shiftRow(row){
+		try { row[0]; }
+		catch(error) { throw ('Row to be shifted is out of bounds'); }
+
+		var currentColumn = 0;
+		while (!row[currentColumn]) {
+			currentColumn++;
+		}
+
+		row[currentColumn] = false;
+		row[currentColumn + 1] = true
+		return row;
+	};
+
+	// YOU SHOULD NOT NEED TO CHECK THE WHOLE BOARD EVERY TIME
+	// JUST THE LAST TWO ROWS. ALL PREVIOUS ROWS SHOULD ALREADY BE CHECKED
+	// FIX ONCE EVERYTHING ELSE WORKS
+	function isLegal(chessBoard) {
+		if (chessBoard.lastRow <= 0) return true;
+		for (var i = 0; i < chessBoard.lastRow; i++) {
+			var thisPos = indexOfQueen(chessBoard.board[i]); 
+			if (thisPos === -1) return false;
+			for (var j = i + 1; j <= chessBoard.lastRow; j++ ) { 
+				var k = j - i;
+				if (chessBoard.board[j][thisPos] === true) { return false; }
+				if (thisPos - k >= 0) {
+					if (chessBoard.board[j][thisPos - k] === true) { return false; }
+				}
+				if (thisPos + k <= chessBoard.rowLength ) {
+					if ( chessBoard.board[j][thisPos + k] === true ) {return false; }
+				}
+			}
+		}
+	return true;
+	};
+
+	function resetBoard(chessBoard) {
+		chessBoard = { rowLength: currentBoardSize, lastRow: 0, board: [], solved: false }
+		chessBoard.board.push(makeArray(chessBoard.rowLength));
+		var randStart = Math.floor(Math.random()* (chessBoard.rowLength + 1));
+		chessBoard.board[0][randStart] = true;
+		return chessBoard;
+	};
+
+	function isUnique(row) {
+		try { row[0]; }
+		catch(error) { throw ('Row is out of bounds'); }
+		var queen = indexOfQueen(row);
+		if (queen === -1) return false;
+		for (var i = queen + 1; i < row.length; i++) {
+			if (row[i] === true) return false;
+		}
+		return true;
+	};
+
+	function indexOfQueen(row){
+		try { row[0]; }
+		catch(error) { throw ('Row is out of bounds'); }
+		var i = 0;
+		while (i < row.length) {
+			if ( row[i] === true ) return i;
+			i++;
+		}
+		return -1;
+	};
+
+	function logBoard(chessBoard){
+		console.log("~~~~~~~~");
+		for (var i=0; i <= chessBoard.lastRow; i++){
+			var row = "";
+			for (var j = 0; j <= chessBoard.rowLength; j++){
+				if ( chessBoard.board[i][j] === false) row += " - ";
+				else if ( chessBoard.board[i][j] === true) row += " X ";
+				else row += " * ";
+			}
+			console.log(row);
+		}
+	};
+
+    function drawBoard(board) {
+    	var uls = document.getElementsByTagName('ul');
+    	for (var i = 0; i <= board.lastRow; i++) {
+    		var lis = uls[i+1].getElementsByTagName('li');
+    		for (var j = 0; j <= board.rowLength; j++) {
+    			if ( board.board[i][j] === true ) {
+	    			lis[j+1].style.backgroundColor='#F00000';
+    			} else {
+    				if ( (uls[i+1].className === 'oddRow' && j%2 === 0) || (uls[i+1].className === 'evenRow' && j%2 !== 0) ) {
+	    				lis[j+1].style.backgroundColor='#000';
+    				} else {
+	    				lis[j+1].style.backgroundColor='#ddd';    					
+    				}
+    			}
+
+    		}
+    	}
+    }; // end drawboard
+
+    </script>
+
+   </body>
+</html>
